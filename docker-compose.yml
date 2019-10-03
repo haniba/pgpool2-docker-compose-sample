@@ -1,0 +1,105 @@
+version: '3'
+networks:
+    pgpool2network:
+        driver: bridge
+        ipam:
+            config:
+                - subnet: ${SUBNET}${NETMAST}
+                  gateway: ${GATEWAY}
+
+
+services:
+    master:
+        image: 'bitnami/postgresql:11.1.0'
+        container_name: ${MASTER_NAME}
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "256m"
+                max-file: "4"
+#        mem_limit: 12G
+        shm_size: 8G
+        ports:
+            - '${POSTGRES_MASTER_PORT}:5432'
+        volumes:
+            - './${MASTER_NAME}_master_data:/bitnami'
+            - './${MASTER_NAME}_conf/postgresql.conf:/etc/postgresql/postgresql.conf'
+#        command:
+#            - 'config_file=/etc/postgresql/postgresql.conf'
+        environment:
+            - TZ=Asia/Bangkok
+            - POSTGRESQL_USERNAME=${POSTGRES_USER}
+            - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD}
+            - POSTGRESQL_DATABASE=${POSTGRES_DB}
+            - POSTGRESQL_REPLICATION_MODE=master
+            - POSTGRESQL_REPLICATION_USER=${REPLICATION_USER}
+            - POSTGRESQL_REPLICATION_PASSWORD=${REPLICATION_PASSWORD}
+        networks:
+            pgpool2network:
+                ipv4_address: ${MASTER_IP}
+
+    slave:
+        image: 'bitnami/postgresql:11.1.0'
+        container_name: ${SLAVE_NAME}
+        depends_on: 
+            - master
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "256m"
+                max-file: "4"
+#        mem_limit: 12G
+        shm_size: 8G
+        ports:
+            - '${POSTGRES_SLAVE_PORT}:5432'
+        volumes:
+            - './${SLAVE_NAME}_SLAVE_data:/bitnami'
+#            - './postgres_conf/postgresql.conf:/etc/postgresql/postgresql.conf'
+#        command:
+#            - 'config_file=/etc/postgresql/postgresql.conf'
+        environment:
+            - TZ=Asia/Bangkok
+#            - POSTGRESQL_USERNAME=${POSTGRES_USER}
+#            - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD}
+#            - POSTGRESQL_DATABASE=${POSTGRES_DB}
+            - POSTGRESQL_REPLICATION_MODE=slave
+            - POSTGRESQL_REPLICATION_USER=${REPLICATION_USER}
+            - POSTGRESQL_REPLICATION_PASSWORD=${REPLICATION_PASSWORD}
+            - POSTGRESQL_MASTER_HOST=${MASTER_IP}
+            - POSTGRESQL_MASTER_PORT_NUMBER=5432
+        networks:
+            pgpool2network:
+                ipv4_address: ${SLAVE_IP}
+    pgpool2_master:
+        image: 'melvinkcx/rds_pgpool:0.2.6'
+        depends_on: 
+            - master
+            - slave
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "256m"
+                max-file: "4"
+#        mem_limit: 12G
+        shm_size: 8G
+        ports:
+            - '${PGPOOL2_MASTER_PORT_CLIENT}:9999'
+            - '${PGPOOL2_MASTER_PORT_PCP}:9000'
+            - '${PGPOOL2_MASTER_PORT_BACKEND}:9694'
+        environment:
+            - DB_NAME=${POSTGRES_DB}
+            - DB_USERNAME=${POSTGRES_USER}
+            - DB_PASSWORD=${POSTGRES_PASSWORD}
+            - MASTER_NODE_HOSTNAME=${MASTER_IP}
+            - MASTER_NODE_PORT=5432
+            - REPLICA_NODE_HOSTNAME_0=${SLAVE_IP}
+            - REPLICA_NODE_PORT=5432
+            - CLUSTER_MODE=true
+            - ELASTIC_IP=${HOST}
+            - MAX_POOL=${MAX_POOL}
+            - NUM_INIT_CHILDREN=${NUM_INIT_CHILDREN}
+
+        networks:
+            pgpool2network:
+                ipv4_address: ${PGPOOL2_MASTER_IP}         
+                
