@@ -7,6 +7,7 @@ docker images using with bitnami/postgresql:11.1.0 and melvinkcx/rds_pgpool:0.2.
   3. docker-compose up -d pgpool2_master 
   4. application can connect with ${PGPOOL2_MASTER_PORT_CLIENT}
   # Diagram
+  '''
 +-------------+
 |             |
 |  MASTER     +--------------+
@@ -21,3 +22,4 @@ docker images using with bitnami/postgresql:11.1.0 and melvinkcx/rds_pgpool:0.2.
 |  SLAVE      +--------------+
 |             |
 +-------------+
+'''
